@@ -8,11 +8,11 @@ from tqdm import tqdm
 from utils import read_side_bearings, get_outermost_range, get_outermost_strokes, get_layer_by_name, dist_between_rankings
 
 
-GLYPHS_FILE = '3type-sy-9169字符_2.glyphs'
+GLYPHS_FILE = 'glyphs/3type-sy-9169字符_2.glyphs'
 STROKE_LABELS_FILE = 'char-labels.json'
 WEIGHTS = ('ExtraLight', 'Regular', 'Heavy')
 DIRECTIONS = ('lsb', 'rsb', 'tsb', 'bsb')
-OUTPUT_FILE = 'glyphs_data.xlsx'
+OUTPUT_FILE = 'output/glyphs_data.xlsx'
 RANGE_COL_NAMES = {'lsb': '最左树枝笔画范围', 'rsb': '最右树枝笔画范围', 'tsb': '最上树枝笔画范围', 'bsb': '最下树枝笔画范围'}
 LABEL_DIRECTION_TRANSLATE = {'lsb': 'left', 'rsb': 'right', 'tsb': 'top', 'bsb': 'bottom'}
 OUTPUT_ALL_RANGES = False

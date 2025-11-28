@@ -1,7 +1,13 @@
 # MacOS
 .DS_Store
 
+# Project
+data/
+output/
+
 # Glyphs
+glyphs/
+*.glyphs
 *.glyphspackage
 
 # Byte-compiled / optimized / DLL files
