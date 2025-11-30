@@ -2,6 +2,7 @@ import random
 import itertools
 from functools import lru_cache
 
+import numpy as np
 from scipy import stats
 from glyphsLib import GSGlyph, GSLayer, GSPath, GSComponent
 from glyphsLib import LINE, CURVE, QCURVE, OFFCURVE
@@ -212,7 +213,7 @@ def get_outermost_range(layer, direction):
 
 def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False) -> str:
     '''
-    Convert the glyph layer to SVG format code string.
+    Convert a glyph layer to SVG format code string.
     If `inverted` is True, the SVG will be a white glyph on black background.
     '''
     width = layer.width
@@ -242,10 +243,10 @@ def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False) -
                 path_code += 'C {} {}, {} {}, {} {} '.format(
                     node.position.x * scaling,
                     (ascender - node.position.y) * scaling,
-                    path.nodes[i + 1].position.x * scaling,
-                    (ascender - path.nodes[i + 1].position.y) * scaling,
-                    path.nodes[i + 2].position.x * scaling,
-                    (ascender - path.nodes[i + 2].position.y) * scaling
+                    node.nextNode.position.x * scaling,
+                    (ascender - node.nextNode.position.y) * scaling,
+                    node.nextNode.nextNode.position.x * scaling,
+                    (ascender - node.nextNode.nextNode.position.y) * scaling
                 )
                 i += 2
             elif node.type == LINE:
@@ -264,15 +265,22 @@ def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False) -
     return svg_code
 
 
-def svg2arr(svg_code, method):
-    '''Convert SVG code string to NumPy array'''
+def layer_to_numpy(layer: GSLayer, scaling: float = 1.0, inverted: bool = False, method: str = 'pyvips') -> np.array:
+    '''
+    Rasterize a glyph layer into a grayscale numpy array.
+    '''
     assert method in ('cairo', 'aggdraw', 'pyvips')
-    if method == 'cairo':
-        svg2png(bytestring=svg_code, write_to=open('output.png', 'wb'))
-        im = Image.open('output.png').convert('L')
+    svg_bytes = layer_to_svg(layer, scaling, inverted).encode()
+    if method == 'pyvips':
+        import pyvips
+        im = pyvips.Image.svgload_buffer(svg_bytes) # dpi, scale
+        return im.numpy()[:, :, 0]
+    elif method == 'cairo':
+        import io
+        import cairosvg
+        from PIL import Image
+        png_bytes = cairosvg.svg2png(svg_bytes)
+        im = Image.open(io.BytesIO(png_bytes)).convert('L')
         return np.asarray(im)
     elif method == 'aggdraw':
-        raise NotImplementedError
-    elif method == 'pyvips':
-        im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8')) # dpi, scale
-        return im.numpy()[:, :, 0]
+        raise NotImplementedError('The aggdraw method is not supported yet.')
