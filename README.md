@@ -1,3 +1,3 @@
-# Font Bench
+# FontBench
 
-Scripts to diagnose Chinese typefaces.
+Collection of tools and experiments to diagnose and quantitaively analyze Chinese typefaces.

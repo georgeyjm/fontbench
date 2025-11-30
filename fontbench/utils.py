@@ -3,6 +3,8 @@ import itertools
 from functools import lru_cache
 
 from scipy import stats
+from glyphsLib import GSGlyph, GSLayer, GSPath, GSComponent
+from glyphsLib import LINE, CURVE, QCURVE, OFFCURVE
 
 
 @lru_cache
@@ -206,3 +208,71 @@ def get_outermost_range(layer, direction):
                 elif coord > outermost_range[1]:
                     outermost_range[1] = coord
     return outermost_range, record
+
+
+def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False) -> str:
+    '''
+    Convert the glyph layer to SVG format code string.
+    If `inverted` is True, the SVG will be a white glyph on black background.
+    '''
+    width = layer.width
+    ascender = layer.master.ascender
+    descender = -layer.master.descender
+    height = ascender + descender # Does this work for Chinese glyphs?
+    assert height == layer.vertWidth #?
+
+    path_code = ''
+    for path in layer.shapes:
+        if isinstance(path, GSComponent):
+            raise NotImplementedError('Components are not supported yet.')
+        elif not isinstance(path, GSPath):
+            raise ValueError(f'Unexpected shape {path}.')
+
+        # Note for SVG, origin is at top-left rather than bottom-left
+        path_code += 'M {} {} '.format(
+            path.nodes[-1].position.x * scaling,
+            (ascender - path.nodes[-1].position.y) * scaling
+        )
+        i = 0
+        while i < len(path.nodes):
+            node = path.nodes[i]
+            if node.type == OFFCURVE:
+                assert node.nextNode.type == OFFCURVE
+                assert node.nextNode.nextNode.type == CURVE
+                path_code += 'C {} {}, {} {}, {} {} '.format(
+                    node.position.x * scaling,
+                    (ascender - node.position.y) * scaling,
+                    path.nodes[i + 1].position.x * scaling,
+                    (ascender - path.nodes[i + 1].position.y) * scaling,
+                    path.nodes[i + 2].position.x * scaling,
+                    (ascender - path.nodes[i + 2].position.y) * scaling
+                )
+                i += 2
+            elif node.type == LINE:
+                path_code += 'L {} {} '.format(
+                    node.position.x * scaling,
+                    (ascender - node.position.y) * scaling
+                )
+            elif node.type == CURVE:
+                # All curve nodes should be handled in the OFFCURVE case
+                raise ValueError(f'Unexpected occurrence of curve node {node}.')
+            elif node.type == QCURVE:
+                raise NotImplementedError('Quadratic curves are not supported yet.')
+            i += 1
+        path_code += 'Z' # What about open curves?
+    svg_code = f'<svg width="{width * scaling}" height="{height * scaling}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="{'black' if inverted else 'white'}"/><path d="{path_code}" fill="{'white' if inverted else 'black'}"/></svg>'
+    return svg_code
+
+
+def svg2arr(svg_code, method):
+    '''Convert SVG code string to NumPy array'''
+    assert method in ('cairo', 'aggdraw', 'pyvips')
+    if method == 'cairo':
+        svg2png(bytestring=svg_code, write_to=open('output.png', 'wb'))
+        im = Image.open('output.png').convert('L')
+        return np.asarray(im)
+    elif method == 'aggdraw':
+        raise NotImplementedError
+    elif method == 'pyvips':
+        im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8')) # dpi, scale
+        return im.numpy()[:, :, 0]
