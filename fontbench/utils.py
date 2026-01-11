@@ -32,17 +32,33 @@ def get_layer_by_master_name(glyph: GSGlyph, master_name: str) -> GSLayer | None
         return None
     return glyph.layers[master_id]
 
+def get_layer_height(layer: GSLayer) -> float:
+    '''
+    Returns the height of a glyph layer.
+    '''
+    height = layer.master.ascender - layer.master.descender # Does this work for Chinese glyphs?
+    # assert height == layer.vertWidth #?
+    if height != layer.vertWidth:
+        print(f'Calculated height "{height}" ≠ vertWidth "{layer.vertWidth}" for layer "{layer.name}" of glyph "{layer.parent.id}" ("{layer.parent.string or layer.parent.unicode}")')
+    if layer.vertWidth is not None:
+        height = layer.vertWidth
+    return height
 
-def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False) -> str:
-    '''
+
+def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False, full_svg: bool = True) -> str:
+    '''    
     Convert a glyph layer to SVG format code string.
-    If `inverted` is True, the SVG will be a white glyph on black background.
+
+    Arguments:
+        layer: The glyph layer to convert to SVG.
+        scaling: The scaling factor to apply to the glyph layer.
+        inverted: If True, the SVG will be a white glyph on black background.
+        full_svg: Whether to include the full SVG document with a rectangle and a path.
     '''
+    assert 0.0 <= scaling <= 1.0, 'Scaling factor must be between 0 and 1.'
     width = layer.width
     ascender = layer.master.ascender
-    descender = -layer.master.descender
-    height = ascender + descender # Does this work for Chinese glyphs?
-    assert height == layer.vertWidth #?
+    height = get_layer_height(layer)
 
     path_code = ''
     for path in layer.shapes:
@@ -70,19 +86,23 @@ def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False) -
                     node.nextNode.nextNode.position.x * scaling,
                     (ascender - node.nextNode.nextNode.position.y) * scaling
                 )
-                i += 2
+                i += 3
+                continue
             elif node.type == LINE:
                 path_code += 'L {} {} '.format(
                     node.position.x * scaling,
                     (ascender - node.position.y) * scaling
                 )
+                i += 1
             elif node.type == CURVE:
                 # All curve nodes should be handled in the OFFCURVE case
                 raise ValueError(f'Unexpected occurrence of curve node {node}.')
             elif node.type == QCURVE:
                 raise NotImplementedError('Quadratic curves are not supported yet.')
-            i += 1
         path_code += 'Z' # What about open curves?
+    
+    if not full_svg:
+        return path_code
     svg_code = f'<svg width="{width * scaling}" height="{height * scaling}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="{'black' if inverted else 'white'}"/><path d="{path_code}" fill="{'white' if inverted else 'black'}"/></svg>'
     return svg_code
 
