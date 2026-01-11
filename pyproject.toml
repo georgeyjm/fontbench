@@ -1,27 +1,23 @@
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "fontbench"
 version = "0.1.0"
 description = "Collection of tools and experiments to diagnose and quantitatively analyze Chinese typefaces."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = "==3.13.*"
 dependencies = [
-    "glyphsLib",
-    "numpy",
+    "glyphslib>=6.12.6",
+    "numpy>=2.4.1",
+    "pandas>=2.3.3",
+    "tqdm>=4.67.1",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pandas",
-    "tqdm",
-    "pyvips",
-    "cairosvg",
-    "Pillow",
+svg = [
+    "cairosvg>=2.8.2",
+    "pillow>=12.1.0",
+    "pyvips>=3.1.1",
 ]
 
-[tool.setuptools]
-packages = ["fontbench"]
-
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
