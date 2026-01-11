@@ -4,6 +4,10 @@
 # Project
 data/
 output/
+intermediary/
+*.xlsx
+*.numbers
+*.pages
 
 # Glyphs
 glyphs/
