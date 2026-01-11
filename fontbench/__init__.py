@@ -1,17 +1,14 @@
-"""
-FontBench - Tools for diagnosing and quantitatively analyzing Chinese typefaces.
-"""
-
 from fontbench.utils import (
     get_glyph,
     get_master_id_by_name,
     get_layer_by_master_name,
     layer_to_svg,
     layer_to_numpy,
+    get_layer_height,
 )
 
 from fontbench.metrics import (
-    glyph_grayscale,
+    grayscale,
 )
 
 __all__ = [
@@ -20,6 +17,7 @@ __all__ = [
     'get_layer_by_master_name',
     'layer_to_svg',
     'layer_to_numpy',
-    'glyph_grayscale',
+    'get_layer_height',
+    'grayscale',
 ]
 

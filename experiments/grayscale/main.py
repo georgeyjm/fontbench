@@ -9,7 +9,7 @@ import pyvips
 from tqdm import tqdm
 
 from fontbench.utils import layer_to_svg
-from integration import occupancy_ratio, svg_to_paths
+import fontbench.metrics as m
 
 
 def read_input_font(input_path: Path) -> GSFont:
@@ -47,24 +47,10 @@ def process_glyphs_grayscale(font: GSFont) -> list[dict]:
         for layer in glyph.layers:
             progress.update(1)
             svg_code = layer_to_svg(layer)
-            grayscale = occupancy_ratio_reference(svg_code)
+            grayscale = m.grayscale(svg_code)
             glyph_data['grayscale'][layer.master.name] = grayscale
         data.append(glyph_data)
     return data
-
-
-def occupancy_ratio_from_svg(svg_code: str, width_px: int, height_px: int, samples_per_segment: int = 10) -> float:
-    return occupancy_ratio(svg_to_paths(svg_code), width_px, height_px, samples_per_segment)
-
-
-def occupancy_ratio_reference(svg_code: str) -> float:
-    # Convert SVG code to NumPy array
-    im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8'), scale=1.0)
-    arr = (255 - im.numpy()[:, :, 0]) / 255
-    height, width = arr.shape
-    total_sum = arr.sum()
-
-    return (total_sum / (width * height)).item()
 
 
 def parse_args():

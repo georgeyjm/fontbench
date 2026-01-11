@@ -113,12 +113,7 @@ def area_of_paths(paths: Iterable[Path], samples_per_segment: int = 200) -> floa
     return total  # signed
 
 
-def occupancy_ratio(paths: Iterable[Path], width_px: int, height_px: int, samples_per_segment: int = 200) -> float:
-    area = abs(area_of_paths(paths, samples_per_segment))
-    return area / (width_px * height_px)
-
-
-def svg_to_paths(svg_code: str) -> Iterable[Path]:
+def svg_to_paths(svg_code: str) -> list[Path]:
     """
     Parse a minimal SVG path "d" string into a list of Path objects.
     Supports 'M', 'L', 'Q', 'C', 'Z' commands as used in sample texts.

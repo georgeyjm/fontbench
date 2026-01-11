@@ -63,7 +63,7 @@ for i, glyph in enumerate(tqdm(font.glyphs)):
                 glyph_labels[direction] = True # Don't need to store strokes for now
                 # glyph_labels[direction] = strokes
     for weight in args.weights:
-        layer = get_layer_by_name(glyph, weight)
+        layer = get_layer_by_master_name(glyph, weight)
         glyph_sb = sb_data[weight].get(glyph.string) # TODO: key should be ID instead of string
         if glyph_sb is None:
             row += [None] * len(args.directions) * 3
@@ -110,7 +110,7 @@ for direction in args.directions:
                 row += [None] * 4
                 continue
             row.append(glyph_sb)
-            layer = get_layer_by_name(glyph, weight)
+            layer = get_layer_by_master_name(glyph, weight)
             row.append(len(get_outermost_strokes(layer, direction)[0]))
             row += get_outermost_range(layer, direction)[0]
         rows.append(row)
