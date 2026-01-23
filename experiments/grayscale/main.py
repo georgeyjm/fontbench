@@ -46,8 +46,11 @@ def process_glyphs_grayscale(font: GSFont) -> list[dict]:
         glyph_data = {'id': glyph.id, 'string': glyph.string, 'unicode': glyph.unicode, 'grayscale': {}}
         for layer in glyph.layers:
             progress.update(1)
-            svg_code = layer_to_svg(layer)
-            grayscale = m.grayscale(svg_code)
+            try:
+                grayscale = m.grayscale(layer)
+            except Exception as e:
+                print(f'Error calculating grayscale for layer {layer.name} of glyph {glyph.string}: {e}')
+                continue
             glyph_data['grayscale'][layer.master.name] = grayscale
         data.append(glyph_data)
     return data
