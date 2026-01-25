@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 # from fontTools.pens.boundsPen import BoundsPen
+from fontTools.varLib.models import normalizeLocation
+from fontTools.varLib.varStore import VarStoreInstancer
 from fontTools.varLib.instancer import instantiateVariableFont
 from fontTools.ttLib.ttFont import TTFont
 from fontTools.ttLib.ttGlyphSet import _TTGlyphGlyf as TTGlyph
@@ -76,10 +78,99 @@ class GlyphProxy:
     def layers(self):
         raise NotImplementedError('Layers are not supported yet.')
     
+    @property
+    def height(self) -> float:
+        return self.font.ascender - self.font.descender
+    
+    @property
+    def width(self) -> float:
+        if not self.font.is_variable:
+            return self.glyph.width
+        
+        default_width = self.font.font['hmtx'].metrics[self.glyph_id][0]
+
+        # For variable fonts, compute interpolated width
+        # Use HVAR if available (more efficient), otherwise fall back to gvar phantom points
+        if 'HVAR' in self.font.font:
+            return self._get_width_from_hvar(default_width)
+        else:
+            return self._get_width_from_gvar(default_width)
+    
+    def _get_width_from_hvar(self, default_width: float) -> float:
+        '''Get interpolated width using HVAR table (Horizontal Metrics Variations).'''        
+        hvar = self.font.font['HVAR'].table
+        fvar = self.font.font['fvar']
+        
+        # Create instancer for the variation store
+        instancer = VarStoreInstancer(hvar.VarStore, fvar.axes, self.master.coordinates)
+        
+        # Get the delta-set index for this glyph
+        if hvar.AdvWidthMap:
+            # Font has explicit mapping from glyph to delta-set
+            idx = hvar.AdvWidthMap.mapping[self.glyph_id]
+        else:
+            # Implicit mapping: glyph index == delta-set inner index
+            idx = self.font.font.getGlyphID(self.glyph_id)
+        
+        # Get the delta at this location
+        delta = instancer[idx]
+        return default_width + delta
+    
+    def _get_width_from_gvar(self, default_width: float) -> float:
+        '''Get interpolated width from gvar phantom points (when HVAR is absent).'''
+        gvar = self.font.font.get('gvar')
+        if gvar is None:
+            return default_width
+        variations = gvar.variations.get(self.glyph_id)
+        if not variations:
+            return default_width
+        
+        # Normalize location coordinates to [-1, 1] range
+        location = normalizeLocation(self.master.coordinates, self.font.axes_dict)
+        
+        # Calculate width delta from all variation tuples
+        width_delta = 0.0
+        for var in variations:
+            if var.coordinates is None:
+                continue
+            
+            # Phantom points are at the END of coordinates:
+            # [-4] origin, [-3] advance width, [-2] top origin, [-1] top advance
+            advance_delta = var.coordinates[-3] if len(var.coordinates) >= 3 else None
+            if advance_delta is None:
+                continue
+            
+            # Calculate scalar for this variation tuple based on location
+            scalar = 1.0
+            for axis_tag, (min_val, peak, max_val) in var.axes.items():
+                if axis_tag not in location:
+                    scalar = 0.0
+                    break
+                loc_val = location[axis_tag]
+                if loc_val == peak:
+                    continue
+                elif loc_val < peak:
+                    if peak == min_val or loc_val <= min_val:
+                        scalar = 0.0
+                        break
+                    scalar *= (loc_val - min_val) / (peak - min_val)
+                else:
+                    if peak == max_val or loc_val >= max_val:
+                        scalar = 0.0
+                        break
+                    scalar *= (max_val - loc_val) / (max_val - peak)
+            
+            if scalar != 0:
+                delta_x = advance_delta[0] if isinstance(advance_delta, tuple) else advance_delta
+                width_delta += scalar * delta_x
+        
+        return default_width + width_delta
+        
+    
     def to_svg_code(self, full_svg: bool = True, output_path: Optional[str | Path] = None) -> str:
-        width = self.glyph.width
+        width = self.width
         # If glyph go out of bounds, maybe should use glyph's bounds instead?
-        height = self.font.ascender - self.font.descender
+        height = self.height
         
         # Draw the glyph
         pen = SVGPathPen(self.master.glyphs)
@@ -107,6 +198,7 @@ class FontProxy:
         self.name_table = self.font['name']
         self.head_table = self.font['head']
         # self.cmap_table = self.font['cmap']
+        self.glyf_table = self.font['glyf']
         self.cmap_table = self.font.getBestCmap()
         
         # Note some glyphs can have multiple codepoints
@@ -200,6 +292,10 @@ class FontProxy:
         if not self.is_variable:
             return []
         return [AxisProxy(ax.axisTag, ax.minValue, ax.maxValue, ax.defaultValue) for ax in self.font['fvar'].axes]
+    
+    @property
+    def axes_dict(self) -> dict[str, tuple[float, float, float]]:
+        return {ax.axisTag: (ax.minValue, ax.defaultValue, ax.maxValue) for ax in self.font['fvar'].axes}
 
     def get_all_glyph_names(self, include_unencoded: bool = False) -> list[str]:
         '''
@@ -243,32 +339,3 @@ class FontProxy:
         if not self.is_variable:
             raise ValueError('Font is not a variable font.')
         return FontProxy(instantiateVariableFont(self.font, coordinates))
-
-
-
-#     def glyph_to_svg(self, name):
-#         glyph = self.get_glyph(name)
-#         width = glyph.width
-#         height = self.ascender - self.descender
-        
-#         return f'''<svg xmlns='http://www.w3.org/2000/svg'
-#      width='{width}' height='{height}'
-#      viewBox='0 {-self.ascender} {width} {height}'>
-#   <g transform='scale(1,-1)'>
-#     <path d='{glyph.svg_path}' fill='black'/>
-#   </g>
-# </svg>'''
-
-
-# Usage
-# font = Font('Roboto-Bold.ttf')
-
-# print(font.family_name)      # 'Roboto'
-# print(font.designer)         # 'Christian Robertson'
-# print(font.units_per_em)     # 2048
-
-# glyph = font.get_glyph('A')
-# print(glyph.width)           # 1395
-# print(glyph.svg_path)        # 'M 550 0 L ...'
-
-# svg = font.glyph_to_svg('A')
