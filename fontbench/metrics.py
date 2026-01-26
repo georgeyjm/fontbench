@@ -25,11 +25,11 @@ def _layer_grayscale_pyvips(layer: GSLayer) -> float:
 
     svg_code = layer_to_svg(layer)
     im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8'), scale=1.0)
-    arr = 255 - im.numpy()[:, :, 0]
-    height, width = arr.shape
-    total_sum = arr.sum().item()
+    # Uses alpha channel instead of `255 - im.numpy()[:, :, 0]`
+    arr = im.numpy()[:, :, 3]
+    height, width = arr.shape[:2]
 
-    return total_sum / (width * height) / 255
+    return (arr.sum() / (width * height) / 255).item()
 
 
 def _layer_grayscale_integration(layer: GSLayer, samples_per_segment: int = 20) -> float:

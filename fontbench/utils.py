@@ -46,6 +46,32 @@ def get_layer_height(layer: GSLayer) -> float:
     return height
 
 
+def _emit_truetype_qspline(offcurves: list, endpoint, ascender: float, scaling: float) -> str:
+    '''
+    Emit SVG quadratic commands for a TrueType spline with implicit on-curve points.
+    Multiple consecutive off-curves have implicit midpoints between them.
+    '''
+    # Transform node position to SVG coordinates
+    svg_coords = lambda node: (node.position.x * scaling, (ascender - node.position.y) * scaling)
+
+    parts = []
+    for i, offcurve in enumerate(offcurves):
+        ctrl = svg_coords(offcurve)
+        
+        if i < len(offcurves) - 1:
+            # Implicit on-curve point at midpoint between consecutive off-curves
+            next_off = offcurves[i + 1]
+            mid_x = (offcurve.position.x + next_off.position.x) / 2
+            mid_y = (offcurve.position.y + next_off.position.y) / 2
+            end = mid_x * scaling, (ascender - mid_y) * scaling
+        else:
+            # Last off-curve connects to the explicit endpoint
+            end = svg_coords(endpoint)
+        
+        parts.append(f'Q {ctrl[0]} {ctrl[1]}, {end[0]} {end[1]}')
+    return ' '.join(parts)
+
+
 def _path_to_svg_path_data(path: GSPath, ascender: float, scaling: float = 1.0) -> str:
     '''
     Convert a GSPath to SVG path data string.
@@ -55,58 +81,60 @@ def _path_to_svg_path_data(path: GSPath, ascender: float, scaling: float = 1.0) 
         ascender: The ascender value for coordinate transformation.
         scaling: The scaling factor to apply.
     '''
-    # Make sure last node is not an offcurve node
+    # Rotate nodes so the last node is on-curve (required for proper SVG path construction)
     while path.nodes[-1].type == OFFCURVE:
         path.nodes.insert(0, path.nodes.pop(-1))
 
-    # Note for SVG, origin is at top-left rather than bottom-left
-    path_code = 'M {} {} '.format(
-        path.nodes[-1].position.x * scaling,
-        (ascender - path.nodes[-1].position.y) * scaling
-    )
-    
+    # Transform node position to SVG coordinates
+    svg_coords = lambda node: (node.position.x * scaling, (ascender - node.position.y) * scaling)
+
+    # Start path at the last on-curve point (SVG origin is top-left)
+    start = svg_coords(path.nodes[-1])
+    parts = [f'M {start[0]} {start[1]}']
+
     i = 0
     while i < len(path.nodes):
         node = path.nodes[i]
-        if node.type == OFFCURVE:
-            if node.nextNode.type == OFFCURVE:
-                if node.nextNode.nextNode.type == OFFCURVE:
-                    # This is a rare edge case where quartic curves appear
-                    # We simply don't handle this case for now
-                    return ''
-                assert node.nextNode.nextNode.type in (CURVE, QCURVE), f'Unexpected occurrence of {node.nextNode.nextNode.type} node {i+2} of {path} in {path.parent}.'
-                path_code += 'C {} {}, {} {}, {} {} '.format(
-                    node.position.x * scaling,
-                    (ascender - node.position.y) * scaling,
-                    node.nextNode.position.x * scaling,
-                    (ascender - node.nextNode.position.y) * scaling,
-                    node.nextNode.nextNode.position.x * scaling,
-                    (ascender - node.nextNode.nextNode.position.y) * scaling
-                )
-                i += 3
-                continue
-            elif node.nextNode.type == QCURVE:
-                path_code += 'Q {} {}, {} {} '.format(
-                    node.position.x * scaling,
-                    (ascender - node.position.y) * scaling,
-                    node.nextNode.position.x * scaling,
-                    (ascender - node.nextNode.position.y) * scaling,
-                )
-                i += 2
-                continue
-            else:
-                raise ValueError(f'Unexpected occurrence of node {i+1} of {path} in {path.parent}.')
-        elif node.type == LINE:
-            path_code += 'L {} {} '.format(
-                node.position.x * scaling,
-                (ascender - node.position.y) * scaling
-            )
+        
+        if node.type == LINE:
+            p = svg_coords(node)
+            parts.append(f'L {p[0]} {p[1]}')
             i += 1
+            
+        elif node.type == OFFCURVE:
+            # Collect consecutive off-curve nodes and return them with the terminal on-curve node.
+            offcurves = [node]
+            endpoint = node.nextNode
+            while endpoint.type == OFFCURVE:
+                offcurves.append(endpoint)
+                endpoint = endpoint.nextNode
+            
+            if len(offcurves) == 1:
+                # Single off-curve → quadratic Bézier
+                assert endpoint.type == QCURVE, f'Expected QCURVE after single offcurve, got {endpoint.type}'
+                ctrl, end = map(svg_coords, (node, endpoint))
+                parts.append(f'Q {ctrl[0]} {ctrl[1]}, {end[0]} {end[1]}')
+                i += 2
+                
+            elif len(offcurves) == 2:
+                # Two off-curves → cubic Bézier
+                assert endpoint.type in (CURVE, QCURVE), f'Expected CURVE/QCURVE after two offcurves, got {endpoint.type}'
+                c1, c2, end = map(svg_coords, (*offcurves, endpoint))
+                parts.append(f'C {c1[0]} {c1[1]}, {c2[0]} {c2[1]}, {end[0]} {end[1]}')
+                i += 3
+                
+            else:
+                # 3+ off-curves → TrueType quadratic spline with implicit midpoints
+                assert endpoint.type == QCURVE, f'Expected QCURVE after TrueType spline, got {endpoint.type}'
+                parts.append(_emit_truetype_qspline(offcurves, endpoint, ascender, scaling))
+                i += len(offcurves) + 1
+                
         elif node.type in (CURVE, QCURVE):
-            # All curve nodes should be handled in the OFFCURVE case
-            raise ValueError(f'Unexpected occurrence of curve/qcurve node {node}.')
-    path_code += 'Z' # What about open curves?
-    return path_code
+            # On-curve nodes should only be reached via off-curve handling
+            raise ValueError(f'Unexpected on-curve node without preceding off-curves: {node}')
+    
+    parts.append('Z')  # TODO: Handle open paths?
+    return ' '.join(parts)
 
 
 def _component_to_svg_content(component: GSComponent, ascender: float, scaling: float = 1.0) -> str:
@@ -244,7 +272,7 @@ def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False, f
     fill_color = 'white' if inverted else 'black'
     bg_color = 'black' if inverted else 'white'
     # Content contains SVG elements (<path> and/or <g>), wrap in a group
-    svg_code = f'<svg width="{width * scaling}" height="{height * scaling}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="{bg_color}"/><g fill="{fill_color}">{svg_content}</g></svg>'
+    svg_code = f'<svg width="{width * scaling}" height="{height * scaling}" xmlns="http://www.w3.org/2000/svg" style="background-color: {bg_color};"><g fill="{fill_color}">{svg_content}</g></svg>'
     return svg_code
 
 
