@@ -6,7 +6,7 @@ from fontbench import FontProxy
 
 
 font = FontProxy('各种黑体大全/OPPO Sans 4.0.ttf')
-json_file = 'experiments/grayscale/data/OPPO Sans 4.0.jsonl'
+json_file = 'experiments/grayscale/data/OPPO Sans 4.0 height.jsonl'
 data = {}
 with open(json_file) as f:
     for line in f:
@@ -37,3 +37,11 @@ for glyph in font.iter_glyphs():
         continue
     if (calculated_grayscale - glyph_data['grayscale'][master_name]) / calculated_grayscale > 0.01:
         print(f'{glyph.glyph_id} ({master_name}): {calculated_grayscale} != {glyph_data['grayscale'][master_name]}')
+
+'''
+These are the edge cases left for OPPO Sans 4.0:
+aringacute (Regular): 0.28012477993124035 != 0.27176844610676637
+uni2043 (Regular): 0.07346118069869456 != 0.016568511178056126
+uniFE19 (Regular): 0.03399521934534463 != 0.030931256255938778 (solved by using calculated height instead of vertWidth)
+I will disregard all of them for now.
+'''

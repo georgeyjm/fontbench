@@ -7,7 +7,7 @@ from glyphsLib import GSFont
 from tqdm import tqdm
 
 import fontbench.metrics as m
-
+from fontbench import FontProxy
 
 def read_input_font(input_path: Path) -> GSFont:
     '''
@@ -50,7 +50,43 @@ def process_glyphs_grayscale(font: GSFont) -> list[dict]:
                 continue
             glyph_data['grayscale'][layer.master.name] = grayscale
         data.append(glyph_data)
+    progress.close()
     return data
+
+
+def process_ttf_grayscale(font: FontProxy) -> list[dict]:
+    import pyvips  # TODO: This should be removed, see below
+
+    print('Calculating glyphs grayscale...')
+    data = {}
+    progress = tqdm(total=sum(len(master.glyphs) for master in font.masters.values()))
+    for master_name, master in font.masters.items():
+        for glyph in master.iter_glyphs():
+            progress.update(1)
+
+            # Calculate grayscale
+            # TODO: Because layer_to_svg takes a layer object, I am rewriting the same logic here manually
+            # We should find a way to better simplify the two processes.
+            svg_code = glyph.to_svg_code()
+            try:
+                im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8'), scale=1.0)
+            except Exception as e:
+                if glyph.width == 0 or glyph.height == 0:
+                    continue
+                print(f'Error loading SVG for glyph {glyph.glyph_id}: {e}')
+                continue
+            arr = im.numpy()[:, :, 3]
+            height, width = arr.shape
+            total_sum = arr.sum().item()
+            grayscale = total_sum / (width * height) / 255
+
+            if glyph.glyph_id in data:
+                data[glyph.glyph_id]['grayscale'][master_name] = grayscale
+            else:
+                data[glyph.glyph_id] = {'id': glyph.glyph_id, 'string': glyph.string, 'grayscale': {master_name: grayscale}}
+
+    progress.close()
+    return list(data.values())
 
 
 def parse_args():
@@ -76,10 +112,27 @@ def parse_args():
 
 
 args = parse_args()
+save_data = False
 
 if args.input.suffix.lower() in ('.glyphs', '.pickle', '.pkl'):
     font = read_input_font(args.input)
     data = process_glyphs_grayscale(font)
+    save_data = True
+
+elif args.input.suffix.lower() in ('.ttf', '.otf'):
+    font = FontProxy(args.input)
+    data = process_ttf_grayscale(font)
+    save_data = True
+
+elif args.input.suffix.lower() == '.json':
+    with open(args.input, 'r') as f:
+        data = json.load(f)
+
+elif args.input.suffix.lower() == '.jsonl':
+    with open(args.input, 'r') as f:
+        data = [json.loads(line) for line in f]
+
+if save_data:
     if args.json and not args.json.exists():
         with open(args.json, 'w') as f:
             json.dump(data, f, indent=4)
@@ -89,9 +142,3 @@ if args.input.suffix.lower() in ('.glyphs', '.pickle', '.pkl'):
             for item in data:
                 f.write(json.dumps(item) + '\n')
         print(f'Saved processed grayscale data at {args.jsonl}')
-elif args.input.suffix.lower() == '.json':
-    with open(args.input, 'r') as f:
-        data = json.load(f)
-elif args.input.suffix.lower() == '.jsonl':
-    with open(args.input, 'r') as f:
-        data = [json.loads(line) for line in f]

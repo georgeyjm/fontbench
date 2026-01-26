@@ -38,11 +38,10 @@ def get_layer_height(layer: GSLayer) -> float:
     Returns the height of a glyph layer.
     '''
     height = layer.master.ascender - layer.master.descender # Does this work for Chinese glyphs?
-    # assert height == layer.vertWidth #?
+    # assert height == layer.vertWidth
+    # When in doubt, use the calculated height
     if height != layer.vertWidth and layer.vertWidth is not None:
         print(f'Calculated height "{height}" ≠ vertWidth "{layer.vertWidth}" for layer "{layer.name}" of glyph "{layer.parent.id}" ("{layer.parent.string or layer.parent.unicode}")')
-    if layer.vertWidth is not None:
-        height = layer.vertWidth
     return height
 
 

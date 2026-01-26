@@ -212,7 +212,9 @@ class FontProxy:
             for instance in self.font['fvar'].instances:
                 master_name = self.get_name(instance.subfamilyNameID)
                 self.masters[master_name] = MasterProxy(self, master_name, instance.coordinates)
-        self.master = self.masters[self.subfamily]  # Default master
+            self.master = self.masters[self.subfamily]  # Default master
+        else:
+            self.masters[self.subfamily] = MasterProxy(self, self.subfamily, {})
     
     def __repr__(self):
         return f'FontProxy ({self.path.name}): {self.family_name} {self.subfamily}'
