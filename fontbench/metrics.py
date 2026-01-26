@@ -1,7 +1,6 @@
 from typing import Literal
 
 from glyphsLib import GSLayer
-import numpy as np
 
 from fontbench.utils import layer_to_svg, get_layer_height
 from fontbench.integration import area_of_paths, svg_to_paths

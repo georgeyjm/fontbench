@@ -4,11 +4,8 @@ import argparse
 from pathlib import Path
 
 from glyphsLib import GSFont
-import numpy as np
-import pyvips
 from tqdm import tqdm
 
-from fontbench.utils import layer_to_svg
 import fontbench.metrics as m
 
 
@@ -49,7 +46,7 @@ def process_glyphs_grayscale(font: GSFont) -> list[dict]:
             try:
                 grayscale = m.grayscale(layer)
             except Exception as e:
-                print(f'Error calculating grayscale for layer {layer.name} of glyph {glyph.string}: {e}')
+                print(f'Error calculating grayscale for layer {layer.name} of glyph {glyph.id}: {e}')
                 continue
             glyph_data['grayscale'][layer.master.name] = grayscale
         data.append(glyph_data)
