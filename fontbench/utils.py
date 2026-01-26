@@ -108,26 +108,23 @@ def _path_to_svg_path_data(path: GSPath, ascender: float, scaling: float = 1.0) 
             while endpoint.type == OFFCURVE:
                 offcurves.append(endpoint)
                 endpoint = endpoint.nextNode
+            i += len(offcurves) + 1
             
             if len(offcurves) == 1:
                 # Single off-curve → quadratic Bézier
                 assert endpoint.type == QCURVE, f'Expected QCURVE after single offcurve, got {endpoint.type}'
                 ctrl, end = map(svg_coords, (node, endpoint))
                 parts.append(f'Q {ctrl[0]} {ctrl[1]}, {end[0]} {end[1]}')
-                i += 2
                 
-            elif len(offcurves) == 2:
-                # Two off-curves → cubic Bézier
-                assert endpoint.type in (CURVE, QCURVE), f'Expected CURVE/QCURVE after two offcurves, got {endpoint.type}'
+            elif len(offcurves) == 2 and endpoint.type == CURVE:
+                # Two off-curves + CURVE → cubic Bézier (PostScript style)
                 c1, c2, end = map(svg_coords, (*offcurves, endpoint))
                 parts.append(f'C {c1[0]} {c1[1]}, {c2[0]} {c2[1]}, {end[0]} {end[1]}')
-                i += 3
-                
+            
             else:
-                # 3+ off-curves → TrueType quadratic spline with implicit midpoints
+                # 2+ off-curves + QCURVE → TrueType quadratic spline with implicit midpoints
                 assert endpoint.type == QCURVE, f'Expected QCURVE after TrueType spline, got {endpoint.type}'
                 parts.append(_emit_truetype_qspline(offcurves, endpoint, ascender, scaling))
-                i += len(offcurves) + 1
                 
         elif node.type in (CURVE, QCURVE):
             # On-curve nodes should only be reached via off-curve handling
@@ -161,16 +158,17 @@ def _component_to_svg_content(component: GSComponent, ascender: float, scaling: 
     # Transform matrix (overrides individual transforms)
     if hasattr(component, 'transform') and (transform := component.transform) is not None:
         # SVG uses 2x3 matrices: matrix(a, b, c, d, e, f)
+        # Since SVG Y-axis is flipped vs Glyphs, we need to negate b, c (cross-terms) and y
         if isinstance(transform, Transform) or isinstance(transform, (list, tuple)):
             assert len(transform) == 6, f'Transform must be a 2x3 matrix: {transform}'
-            *matrix, x, y = transform
-            transforms = [f'matrix({', '.join(map(str, matrix))}, {x * scaling}, {(y) * scaling})']
+            a, b, c, d, x, y = transform
+            transforms = [f'matrix({a}, {-b}, {-c}, {d}, {x * scaling}, {-y * scaling})']
         elif hasattr(transform, 'transformStruct'):
             # Handle NSAffineTransform-like objects
             matrix = transform.transformStruct() if callable(transform.transformStruct) else transform.transformStruct
-            *matrix, x, y = matrix
+            a, b, c, d, x, y = matrix
             if matrix and len(matrix) == 6:
-                transforms = [f'matrix({', '.join(map(str, matrix))}, {x * scaling}, {(y) * scaling})']
+                transforms = [f'matrix({a}, {-b}, {-c}, {d}, {x * scaling}, {-y * scaling})']
     else:
         # Handle individual transforms
         transforms = []
@@ -180,8 +178,7 @@ def _component_to_svg_content(component: GSComponent, ascender: float, scaling: 
         if position is not None:
             x = position.x if hasattr(position, 'x') else position[0] if isinstance(position, (tuple, list)) else 0
             y = position.y if hasattr(position, 'y') else position[1] if isinstance(position, (tuple, list)) else 0
-            # In SVG, y increases downward, so we need to flip the y coordinate
-            transforms.append(f'translate({x * scaling}, {(ascender - y) * scaling})')
+            transforms.append(f'translate({x * scaling}, {-y * scaling})')
         
         # Scale
         scale = getattr(component, 'scale', None)
@@ -200,14 +197,14 @@ def _component_to_svg_content(component: GSComponent, ascender: float, scaling: 
         # Rotation
         rotation = getattr(component, 'rotation', None)
         if rotation is not None:
-            # Rotation is typically in degrees
-            transforms.append(f'rotate({rotation})')
+            # Negate rotation since SVG Y-axis is flipped (CCW in Glyphs → CW in SVG)
+            transforms.append(f'rotate({-rotation})')
         
         # Slant (skewX)
         slant = getattr(component, 'slant', None)
         if slant is not None:
-            # Slant is typically in degrees
-            transforms.append(f'skewX({slant})')
+            # Negate slant since SVG Y-axis is flipped
+            transforms.append(f'skewX({-slant})')
     
     if transforms:
         # Wrap in a <g> element to apply potentially nested transformations
