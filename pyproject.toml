@@ -5,6 +5,7 @@ description = "Collection of tools and experiments to diagnose and quantitativel
 readme = "README.md"
 requires-python = "==3.13.*"
 dependencies = [
+    "fonttools>=4.61.1",
     "glyphslib>=6.12.6",
     "ipykernel>=7.1.0",
     "numpy>=2.4.1",

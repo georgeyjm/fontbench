@@ -198,6 +198,7 @@ name = "fontbench"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fonttools" },
     { name = "glyphslib" },
     { name = "ipykernel" },
     { name = "numpy" },
@@ -216,6 +217,7 @@ svg = [
 [package.metadata]
 requires-dist = [
     { name = "cairosvg", marker = "extra == 'svg'", specifier = ">=2.8.2" },
+    { name = "fonttools", specifier = ">=4.61.1" },
     { name = "glyphslib", specifier = ">=6.12.6" },
     { name = "ipykernel", specifier = ">=7.1.0" },
     { name = "numpy", specifier = ">=2.4.1" },

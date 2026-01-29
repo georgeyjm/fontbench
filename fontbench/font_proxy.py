@@ -197,9 +197,18 @@ class FontProxy:
         
         self.name_table = self.font['name']
         self.head_table = self.font['head']
-        # self.cmap_table = self.font['cmap']
-        self.glyf_table = self.font['glyf']
         self.cmap_table = self.font.getBestCmap()
+        
+        # Determine outline format (TrueType glyf vs CFF)
+        # But getGlyphSet() actually is a unified API, so this is not needed.
+        if 'glyf' in self.font:
+            self.outline_format = 'glyf'
+        elif 'CFF ' in self.font:
+            self.outline_format = 'CFF'
+        elif 'CFF2' in self.font:
+            self.outline_format = 'CFF2'
+        else:
+            raise ValueError('Font has no recognized outline table (glyf, CFF, or CFF2)')
         
         # Note some glyphs can have multiple codepoints
         # For example, space and non-breaking space may share a glyph
