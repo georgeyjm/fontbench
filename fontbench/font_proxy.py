@@ -259,6 +259,14 @@ class FontProxy:
         return self.get_name(Name.SUBFAMILY)
     
     @property
+    def typographic_family(self) -> str:
+        return self.get_name(Name.TYPOGRAPHIC_FAMILY)
+    
+    @property
+    def typographic_subfamily(self) -> str:
+        return self.get_name(Name.TYPOGRAPHIC_SUBFAMILY)
+    
+    @property
     def full_name(self) -> str:
         return self.get_name(Name.FULL_NAME)
 
