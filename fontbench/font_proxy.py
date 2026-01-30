@@ -221,12 +221,12 @@ class FontProxy:
             for instance in self.font['fvar'].instances:
                 master_name = self.get_name(instance.subfamilyNameID)
                 self.masters[master_name] = MasterProxy(self, master_name, instance.coordinates)
-            self.master = self.masters[self.subfamily]  # Default master
+            self.master = self.masters[self.typographic_subfamily]  # Default master
         else:
-            self.masters[self.subfamily] = MasterProxy(self, self.subfamily, {})
+            self.masters[self.typographic_subfamily] = MasterProxy(self, self.typographic_subfamily, {})
     
     def __repr__(self):
-        return f'FontProxy ({self.path.name}): {self.family_name} {self.subfamily}'
+        return f'FontProxy ({self.path.name}): {self.typographic_family} {self.typographic_subfamily}'
     
     def get_name(self, name_id: Name, prefer_chinese: bool = True) -> str | None:
         # TODO: Also consider Unicode and Mac platforms
@@ -260,11 +260,11 @@ class FontProxy:
     
     @property
     def typographic_family(self) -> str:
-        return self.get_name(Name.TYPOGRAPHIC_FAMILY)
+        return self.get_name(Name.TYPOGRAPHIC_FAMILY) or self.family_name
     
     @property
     def typographic_subfamily(self) -> str:
-        return self.get_name(Name.TYPOGRAPHIC_SUBFAMILY)
+        return self.get_name(Name.TYPOGRAPHIC_SUBFAMILY) or self.subfamily
     
     @property
     def full_name(self) -> str:

@@ -200,34 +200,38 @@ source = { editable = "." }
 dependencies = [
     { name = "fonttools" },
     { name = "glyphslib" },
-    { name = "ipykernel" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "seaborn" },
     { name = "tqdm" },
 ]
 
 [package.optional-dependencies]
-svg = [
+cairo = [
     { name = "cairosvg" },
+]
+dev = [
+    { name = "ipykernel" },
+    { name = "seaborn" },
+]
+svg = [
     { name = "pillow" },
     { name = "pyvips" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "cairosvg", marker = "extra == 'svg'", specifier = ">=2.8.2" },
+    { name = "cairosvg", marker = "extra == 'cairo'", specifier = ">=2.8.2" },
     { name = "fonttools", specifier = ">=4.61.1" },
     { name = "glyphslib", specifier = ">=6.12.6" },
-    { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "numpy", specifier = ">=2.4.1" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pillow", marker = "extra == 'svg'", specifier = ">=12.1.0" },
     { name = "pyvips", marker = "extra == 'svg'", specifier = ">=3.1.1" },
-    { name = "seaborn", specifier = ">=0.13.2" },
+    { name = "seaborn", marker = "extra == 'dev'", specifier = ">=0.13.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
-provides-extras = ["svg"]
+provides-extras = ["svg", "cairo", "dev"]
 
 [[package]]
 name = "fonttools"
