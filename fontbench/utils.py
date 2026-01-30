@@ -291,3 +291,31 @@ def layer_to_numpy(layer: GSLayer, scaling: float = 1.0, inverted: bool = False,
         return np.asarray(im)
     elif method == 'aggdraw':
         raise NotImplementedError('The aggdraw method is not supported yet.')
+
+
+def get_font_weight_value(master_name: str) -> int:
+    '''
+    Map font weight name to numeric value.
+    Returns weight value from 100 (Thin) to 950 (Extra Black).
+    Unknown weights default to 400 (Regular).
+    '''
+    weight_map = {
+        'thin': 100,
+        'extra light': 200,
+        'ultra light': 200,
+        'light': 300,
+        'regular': 400,
+        'normal': 400,
+        'medium': 500,
+        'semi bold': 600,
+        'demi bold': 600,
+        'bold': 700,
+        'extra bold': 800,
+        'ultra bold': 800,
+        'black': 900,
+        'heavy': 900,
+        'extra black': 950,
+        'ultra black': 950,
+    }
+    normalized = master_name.lower().strip()
+    return weight_map.get(normalized, 400)
