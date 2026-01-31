@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 import numpy as np
 from glyphsLib import GSFont, GSGlyph, GSLayer, GSPath, GSComponent
@@ -291,7 +292,7 @@ def layer_to_numpy(layer: GSLayer, scaling: float = 1.0, inverted: bool = False,
         raise NotImplementedError('The aggdraw method is not supported yet.')
 
 
-def get_font_weight_value(master_name: str) -> int:
+def get_font_weight_value(master_name: str, default: Optional[int] = None) -> int:
     '''
     Map font weight name to numeric value.
     Returns weight value from 100 (Thin) to 950 (Extra Black).
@@ -316,4 +317,4 @@ def get_font_weight_value(master_name: str) -> int:
         'ultrablack': 950,
     }
     normalized = master_name.lower().strip().replace('-', '').replace(' ', '')
-    return weight_map.get(normalized, 400)
+    return weight_map.get(normalized, default)
