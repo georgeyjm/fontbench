@@ -299,21 +299,21 @@ def get_font_weight_value(master_name: str) -> int:
     '''
     weight_map = {
         'thin': 100,
-        'extra light': 200,
-        'ultra light': 200,
+        'extralight': 200,
+        'ultralight': 200,
         'light': 300,
         'regular': 400,
         'normal': 400,
         'medium': 500,
-        'semi bold': 600,
-        'demi bold': 600,
+        'semibold': 600,
+        'demibold': 600,
         'bold': 700,
-        'extra bold': 800,
-        'ultra bold': 800,
+        'extrabold': 800,
+        'ultrabold': 800,
         'black': 900,
         'heavy': 900,
-        'extra black': 950,
-        'ultra black': 950,
+        'extrablack': 950,
+        'ultrablack': 950,
     }
-    normalized = master_name.lower().strip()
+    normalized = master_name.lower().strip().replace('-', '').replace(' ', '')
     return weight_map.get(normalized, 400)
