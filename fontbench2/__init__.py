@@ -19,6 +19,11 @@ from fontbench2.metrics import (
     outline_statistics,
     lightness,
 )
+from fontbench2.strokes import (
+    stroke_count,
+    stroke_counts,
+    stroke_table_info,
+)
 
 __all__ = [
     'open_font',
@@ -32,4 +37,7 @@ __all__ = [
     'coverage',
     'outline_statistics',
     'lightness',
+    'stroke_count',
+    'stroke_counts',
+    'stroke_table_info',
 ]
