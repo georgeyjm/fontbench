@@ -1,8 +1,6 @@
 import json
 
-import pyvips
-
-from fontbench import FontProxy
+from fontbench import FontProxy, grayscale
 
 
 font = FontProxy('各种黑体大全/OPPO Sans 4.0.ttf')
@@ -14,19 +12,10 @@ with open(json_file) as f:
         data[line['id']] = line
 
 for glyph in font.iter_glyphs():
-    svg_code = glyph.to_svg_code()
-    try:
-        im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8'), scale=1.0)
-    except Exception as e:
-        if glyph.width == 0 or glyph.height == 0:
-            continue
-        print(f'Error loading SVG for glyph {glyph.glyph_id}: {e}')
+    if glyph.width == 0 or glyph.height == 0:
         continue
-    arr = im.numpy()[:, :, 3]
-    height, width = arr.shape
-    total_sum = arr.sum().item()
-    calculated_grayscale = total_sum / (width * height) / 255
-    
+    calculated_grayscale = grayscale(glyph)
+
     glyph_data = data[glyph.glyph_id]
     master_name = glyph.master.name
     if master_name not in glyph_data['grayscale']:
@@ -39,7 +28,7 @@ for glyph in font.iter_glyphs():
         print(f'{glyph.glyph_id} ({master_name}): {calculated_grayscale} != {glyph_data['grayscale'][master_name]}')
 
 '''
-These are the edge cases left for OPPO Sans 4.0:
+These are the edge cases left for OPPO Sans 4.0 (found when grayscale was still measured by rasterizing with pyvips):
 aringacute (Regular): 0.28012477993124035 != 0.27176844610676637
 uni2043 (Regular): 0.07346118069869456 != 0.016568511178056126
 uniFE19 (Regular): 0.03399521934534463 != 0.030931256255938778 (solved by using calculated height instead of vertWidth)

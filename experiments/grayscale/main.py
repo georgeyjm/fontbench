@@ -55,30 +55,19 @@ def process_glyphs_grayscale(font: GSFont) -> list[dict]:
 
 
 def process_ttf_grayscale(font: FontProxy) -> list[dict]:
-    import pyvips  # TODO: This should be removed, see below
-
     print('Calculating glyphs grayscale...')
     data = {}
     progress = tqdm(total=sum(len(master.glyphs) for master in font.masters.values()))
     for master_name, master in font.masters.items():
         for glyph in master.iter_glyphs():
             progress.update(1)
-
-            # Calculate grayscale
-            # TODO: Because layer_to_svg takes a layer object, I am rewriting the same logic here manually
-            # We should find a way to better simplify the two processes.
-            svg_code = glyph.to_svg_code()
-            try:
-                im = pyvips.Image.svgload_buffer(bytes(svg_code, 'utf-8'), scale=1.0)
-            except Exception as e:
-                if glyph.width == 0 or glyph.height == 0:
-                    continue
-                print(f'Error loading SVG for glyph {glyph.glyph_id}: {e}')
+            if glyph.width == 0 or glyph.height == 0:
                 continue
-            arr = im.numpy()[:, :, 3]
-            height, width = arr.shape
-            total_sum = arr.sum().item()
-            grayscale = total_sum / (width * height) / 255
+            try:
+                grayscale = m.grayscale(glyph)
+            except Exception as e:
+                print(f'Error calculating grayscale for glyph {glyph.glyph_id} ({master_name}): {e}')
+                continue
 
             if glyph.glyph_id in data:
                 data[glyph.glyph_id]['grayscale'][master_name] = grayscale

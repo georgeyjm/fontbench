@@ -274,6 +274,7 @@ def layer_to_svg(layer: GSLayer, scaling: float = 1.0, inverted: bool = False, f
 def layer_to_numpy(layer: GSLayer, scaling: float = 1.0, inverted: bool = False, method: str = 'pyvips') -> np.array:
     '''
     Rasterize a glyph layer into a grayscale numpy array.
+    Installs pyvips (and libvips) or cairosvg and Pillow separately before calling it.
     '''
     assert method in ('cairo', 'aggdraw', 'pyvips')
     svg_bytes = layer_to_svg(layer, scaling, inverted).encode()
