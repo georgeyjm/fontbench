@@ -19,6 +19,13 @@ from fontbench2.metrics import (
     outline_statistics,
     lightness,
 )
+from fontbench2.measure import (
+    GlyphMeasurement,
+    FontMeasurement,
+    SkipReason,
+    measure_glyph,
+    measure_font,
+)
 from fontbench2.strokes import (
     stroke_count,
     stroke_counts,
@@ -37,6 +44,11 @@ __all__ = [
     'coverage',
     'outline_statistics',
     'lightness',
+    'GlyphMeasurement',
+    'FontMeasurement',
+    'SkipReason',
+    'measure_glyph',
+    'measure_font',
     'stroke_count',
     'stroke_counts',
     'stroke_table_info',
