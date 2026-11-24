@@ -7,7 +7,7 @@ from fontTools.pens.basePen import AbstractPen
 from fontTools.pens.filterPen import DecomposingFilterPen
 from glyphsLib import GSFont, GSFontMaster, GSGlyph, GSLayer
 
-from fontbench2.sources.base import Box
+from fontbench.sources.base import Box
 
 
 class GlyphsFont:

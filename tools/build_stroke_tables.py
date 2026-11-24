@@ -1,5 +1,5 @@
 '''
-Builds fontbench2's character tables from the Unihan database and saves them as a pickle.
+Builds fontbench's character tables from the Unihan database and saves them as a pickle.
 
 Three tables are built:
 
@@ -34,7 +34,7 @@ from pathlib import Path
 
 UNIHAN_15_URL = 'https://www.unicode.org/Public/15.0.0/ucd/Unihan.zip'
 UNIHAN_LATEST_URL = 'https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip'
-OUTPUT = Path(__file__).resolve().parent.parent / 'fontbench2' / 'data' / 'stroke_counts.pickle'
+OUTPUT = Path(__file__).resolve().parent.parent / 'fontbench' / 'data' / 'stroke_counts.pickle'
 # Ranges of kTGH positions for the three levels of the 通用规范汉字表; each level is sorted by stroke count
 TGH_LEVELS = ((1, 3500), (3501, 6500), (6501, 8105))
 

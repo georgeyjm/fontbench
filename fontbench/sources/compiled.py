@@ -7,7 +7,7 @@ from fontTools.pens.basePen import AbstractPen, NullPen
 from fontTools.pens.filterPen import DecomposingFilterPen
 from fontTools.ttLib import TTFont
 
-from fontbench2.sources.base import Box
+from fontbench.sources.base import Box
 
 
 # Windows platform, Unicode encodings

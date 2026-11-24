@@ -2,9 +2,9 @@ from pathlib import Path
 
 from glyphsLib import GSFont
 
-from fontbench2.sources.base import Box, Font, Glyph
-from fontbench2.sources.compiled import CompiledFont, CompiledGlyph
-from fontbench2.sources.glyphs import GlyphsFont, GlyphsGlyph
+from fontbench.sources.base import Box, Font, Glyph
+from fontbench.sources.compiled import CompiledFont, CompiledGlyph
+from fontbench.sources.glyphs import GlyphsFont, GlyphsGlyph
 
 
 _COMPILED_SUFFIXES = ('.ttf', '.otf', '.ttc', '.otc')

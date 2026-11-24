@@ -15,7 +15,7 @@ kept in sets/9169.txt, which documents where it comes from.
 from functools import cache
 from pathlib import Path
 
-from fontbench2.strokes import _tables
+from fontbench.strokes import _tables
 
 
 SETS = Path(__file__).parent / 'sets'

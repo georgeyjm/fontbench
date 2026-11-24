@@ -12,9 +12,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Callable, Iterable
 
-from fontbench2.metrics import lightness, outline_statistics
-from fontbench2.sources import Box, Font, Glyph
-from fontbench2.strokes import Convention, stroke_count
+from fontbench.metrics import lightness, outline_statistics
+from fontbench.sources import Box, Font, Glyph
+from fontbench.strokes import Convention, stroke_count
 
 
 class SkipReason(StrEnum):
@@ -72,7 +72,7 @@ def measure_glyph(glyph: Glyph, char: str | None = None, stroke_convention: Conv
     Arguments:
         glyph: The glyph to measure.
         char: The character the measurement is for. Defaults to the glyph's first character.
-        stroke_convention: Which stroke counts to use (see fontbench2.strokes).
+        stroke_convention: Which stroke counts to use (see fontbench.strokes).
 
     Raises:
         ValueError: The glyph's frame is empty (zero advance width), or `char` is None and the glyph is unencoded.
@@ -105,7 +105,7 @@ def measure_font(
         master: Which master (or named instance); None uses the font's default master.
         chars: Characters to measure. None measures every encoded glyph. Characters the font does not
             have are listed in `skipped`.
-        stroke_convention: Which stroke counts to use (see fontbench2.strokes).
+        stroke_convention: Which stroke counts to use (see fontbench.strokes).
         font_id: How results from this font and master are identified later, e.g. in a reference.
             Defaults to "{family} {master}". Pass your own when two fonts share a family name.
         progress: Wraps the iterable being worked through (glyphs, or `chars` if given), e.g. `tqdm` for a

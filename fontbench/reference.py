@@ -22,8 +22,8 @@ from typing import Iterable, Literal, Sequence
 
 import numpy as np
 
-from fontbench2.charsets import tongyong_guifan
-from fontbench2.measure import FontMeasurement
+from fontbench.charsets import tongyong_guifan
+from fontbench.measure import FontMeasurement
 
 
 Normalization = Literal['ratio', 'robust_z', 'normal_score']
