@@ -1,7 +1,7 @@
 '''
-Builds fontbench2's stroke-count tables from the Unihan database and saves them as a pickle.
+Builds fontbench2's character tables from the Unihan database and saves them as a pickle.
 
-Two tables are built:
+Three tables are built:
 
 mainland: Stroke counts for simplified Chinese (zh-Hans), following mainland China's counting conventions.
     Taken from kTotalStrokes in Unihan 15.0, the last release where that property gave zh-Hans counts
@@ -13,6 +13,9 @@ mainland: Stroke counts for simplified Chinese (zh-Hans), following mainland Chi
 
 irg: kTotalStrokes from the given (normally the latest) Unihan release, following IRG conventions.
     Differs from mainland counts for components like 艹, 辶 and 阝 (e.g. 过: 7 here, 6 in mainland).
+
+tgh: Each character's position (1-8105) in the 通用规范汉字表, from kTGH in the latest release.
+    Positions 1-3500 are level 1, 3501-6500 level 2, and 6501-8105 level 3.
 
 By default both Unihan releases are downloaded from unicode.org. Pass local Unihan.zip files to skip that.
 
@@ -57,13 +60,18 @@ def main():
     # kTGH values look like '2013:1234'; the number is the character's position in the table
     positions = {char: int(value.split()[0].split(':')[1]) for char, value in tgh.items()}
     corrections = correct_by_order(mainland, positions)
+    # Checked after correct_by_order, which relies on the same assumption
+    if sorted(positions.values()) != list(range(1, TGH_LEVELS[-1][1] + 1)):
+        raise SystemExit('kTGH positions are not exactly 1-8105')
 
     tables = {
         'mainland': mainland,
         'irg': irg,
+        'tgh': positions,
         'info': {
             'mainland_source': f'Unihan {version_15} kTotalStrokes (zh-Hans), corrected by the 通用规范汉字表 order',
             'irg_source': f'Unihan {version_latest} kTotalStrokes',
+            'tgh_source': f'Unihan {version_latest} kTGH (通用规范汉字表, 2013)',
             'unicode_versions': {'mainland': version_15, 'irg': version_latest},
             'corrections': corrections,
             'built': datetime.now(timezone.utc).isoformat(timespec='seconds'),
@@ -78,6 +86,7 @@ def main():
     for char, (old, new) in corrections.items():
         print(f'    {char} U+{ord(char):04X}: {old} → {new}')
     print(f'irg: {len(irg)} characters (Unihan {version_latest})')
+    print(f'tgh: {len(positions)} characters')
     print(f'Saved to {args.output}')
 
 

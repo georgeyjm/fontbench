@@ -64,10 +64,15 @@ def stroke_table_info() -> Mapping[str, Any]:
 
 @cache
 def _tables() -> dict[str, Mapping]:
+    if not TABLES.is_file():
+        raise FileNotFoundError(
+            f'{TABLES} is missing. It is not kept in git; build it with: python tools/build_stroke_tables.py'
+        )
     with TABLES.open('rb') as f:
         tables = pickle.load(f)
     return {
         'mainland': MappingProxyType(tables['mainland']),
         'irg': MappingProxyType(tables['irg']),
+        'tgh': MappingProxyType(tables['tgh']),
         'info': MappingProxyType(tables['info']),
     }
