@@ -25,6 +25,13 @@ experiments/
     data/                    Earlier grayscale measurements, in the old JSONL format
   sidebearings/
     树枝笔画标签综合.xlsx, char-labels.json   Hand-labelled outermost strokes (see Earlier experiments)
+  validation/                Phase 4: validating reference grayscale on the 黑体 corpus (see Validation)
+    corpus.py                Font list grouped by design family; measurement cache in data/ (gitignored)
+    validate.py              Normalization, tone-curve and reference-choice comparisons → output/validation/
+    deviations.py            HTML page of one font's most-flagged glyphs, for checking by eye
+    weight_bias.py           Reference darkness limits vs stroke-related bias, light/mid/heavy targets
+  strokes/
+    export_strokes.py        Stroke count per character of a charset (9169, tgh levels or a text file) → CSV/XLSX
 tools/
   build_stroke_tables.py   Builds fontbench/data/stroke_counts.pickle from Unihan
 glyphs/            Glyphs source files (gitignored)
@@ -152,21 +159,81 @@ absolute path; if the repo folder moves, reinstall with `uv pip install -e . --n
 `measure.py` writes `.jsonl` (one row per character and master) or `.pickle` (a list of `FontMeasurement`), and
 accepts `.glyphs` files, pickled `GSFont`s (to skip slow parsing) and compiled fonts.
 
+Validation (phase 4):
+
+```bash
+.venv/bin/python experiments/validation/corpus.py      # measure the corpus once (~3 min), cached
+.venv/bin/python experiments/validation/validate.py    # all sections (~4 min); --sections 1 2 3 4
+.venv/bin/python experiments/validation/deviations.py "OPPOSans Regular"
+.venv/bin/python experiments/validation/deviations.py --font glyphs/书宋.glyphs --master Regular
+```
+
+## Validation
+
+The corpus is 87 SC masters in 37 design families from `../各种黑体大全`, from about 0.10 median coverage (苹方
+极细) to 0.59 (兰亭黑 Heavy). Two TC fonts are measured but kept out of SC references. A target is only compared
+with references from other design families: by default, the master of each family closest to it in darkness,
+if it is within 1.5× of the target's darkness (see Weight bias).
+Errors are mean absolute errors on held-out glyphs, as % of the target's median coverage, with the median taken
+over targets.
+
+Findings (2026-11-25):
+- **Normalization matters more than the model, and mostly in the tails.** Predicting levels 2–3 from level 1
+  gives about 2.25% for every normalization and spline. For the darkest and lightest 10% of glyphs, normal_score
+  positions do worst: linear 5.8% and 7.7%, spline k5 2.7% and 3.1%. robust_z with spline k5 gives 2.8% and
+  2.0%. normal_score squeezes each font's tails into a fixed shape and saturates at the basis extremes. For
+  example, 一 gets the same position in every font, and single-stroke glyphs come out systematically "too light".
+  ratio and robust_z predict almost identically.
+- With robust_z or ratio positions, even the linear model is close (2.3% on levels 2–3, about 3% on the tails).
+  The spline mainly helps in the tails. k5 and k7 are equal, k3 is slightly worse, and smoothing=0.1 hurts the
+  tails.
+- Light fonts are harder to predict (about 2.6% vs 2.1%). The worst-predicted families are stylistically unusual
+  (iLiHei 5%, the rounded M 圆 3.4%).
+- **References:**
+  - For mid-weight targets, the closest-weight master per family is best. Restricting references to within 1.25×
+    darkness doesn't help, and using every master of every family is slightly worse. Light targets are
+    different (see the weight-bias finding below).
+  - Error falls from 3.3% with 1 reference family to 2.5% with 8, and 2.4% with all 36.
+  - Positions from two disjoint halves of 18 families correlate at 0.997 (noise 0.05 vs a single font's typical
+    disagreement of 0.18). So the remaining ~2% error is the target's own design, not reference noise.
+- **Flagged glyphs cluster by component.** For OPPO Sans R, the glyphs flagged darker are 髟-top characters
+  (鬣鬒鬈鬓) and 罍/藟; those flagged lighter are left-口 characters (唰呵嘟喘). These look like consistent design
+  choices rather than random errors.
+- **Across all 87 SC masters** (deviations.py on each, robust_z, spline k5, before the 1.5× limit below): most
+  fonts flag 0.3–1.2% of glyphs
+  beyond ±3σ. No character is flagged in more than 11 of 37 families, so flags are font-specific, not reference
+  errors. But residuals depend on weight: the correlation of a font's darkness with its score-vs-stroke-count
+  correlation is −0.71. Very light masters (IBM Plex Thin, 苹方极细, 青花黑 W1: 3–4% flagged) see dense glyphs
+  flagged darker, and heavy masters see them flagged lighter. 方正兰亭黑 flags
+  dense glyphs lighter at every weight (a family style). Clusters, as with OPPO: 門 darker in 苹方 and 思源;
+  參/翏 lighter in 思源; 鱼 lighter in 冬青; 钅/鸟/贝 lighter in iLiHei (258 lighter flags); 髟 and 雨 lighter in
+  兰亭黑. MiSans, HarmonyOS Sans, 阿里巴巴普惠体 and 汉仪旗黑 share most of their flags (罍圙廙藟蒐毐雎 darker,
+  雩彳鄂鹗 lighter).
+- **Weight bias** (`weight_bias.py`, all 87 masters, binned by median coverage: light < 0.20, heavy ≥ 0.40):
+  - Light targets get references that are too dark. With the default matched references (36 families), their
+    densest 10% of glyphs are predicted 2.7% too light (median; 6% for IBM Plex Thin and 苹方极细). Limiting
+    references to within 1.5× darkness (about 13 families) cuts this to 0.9%, and 1.25× (about 8) to 0.5%.
+    Errors fall too: 4.2% → 3.3% on dense glyphs, 2.8% → 2.4% on L1 → L2–3. The flag rate falls from 1.9% to
+    1.2%, and the score–stroke correlation from 0.18 to 0.05.
+  - Mid-weight targets: no change from any limit.
+  - Heavy targets: the dense-glyph bias is mostly the target family's own style. 德赛黑 and 兰亭黑 stay about
+    +1% whatever the references, and OPPO Sans goes the other way. 1.5× still gives the lowest errors (L1 → L2–3
+    1.97% → 1.82%).
+  - Within 1.5× is never worse than no limit in any bin. "All masters within 1.25×" gives no extra benefit.
+  - **Decision (2026-11-27): `reference_fonts` now limits references to 1.5× darkness by default.** If that
+    leaves fewer than 3, it keeps the 3 closest instead; the lightest corpus masters have exactly 3. deviations.py
+    uses the default (`--max-darkness-ratio 0` for no limit). validate.py and weight_bias.py pass
+    `max_darkness_ratio=None` for their baselines, so the numbers recorded above still reproduce. Regenerating
+    all 87 pages cut flags from 7,930 to 7,060: IBM Plex Thin 426 → 132, 苹方极细 388 → 130. A few fonts gained
+    flags, most of all iLiHei (261 → 308) and the 细等线 fonts (about +34).
+
 ## Status
 
-- **Phase 1** (sources, metrics, strokes), **phase 2** (measure) and **phase 3** (reference, tone curves,
-  comparison) are done.
-- Results so far (OPPO Sans R against five 黑体 references):
-  - `normal_score` gives the lowest cross-font spread, but only slightly.
-  - Fitted on level 1, the spline predicts levels 2–3 with a mean error of about 1.4% of the median coverage.
-  - The linear model misfits both tails.
-- **Phase 4** (next) is a validation script, not library code:
-  - Measure many fonts.
-  - Compare normalizations by cross-font spread.
-  - Compare linear and spline curves with `evaluate_fit` on realistic splits (level 1 → levels 2–3, a subset →
-    the rest of 9169, light → darkest tail).
-  - Check the top flagged glyphs by eye.
-  - Test how sensitive results are to the reference fonts chosen.
+- **Phase 1** (sources, metrics, strokes), **phase 2** (measure), **phase 3** (reference, tone curves,
+  comparison) and **phase 4** (validation, see above) are done.
+- Open decision: the library's default normalization is still normal_score, though validation favors robust_z
+  for prediction. normal_score still has the lowest cross-font disagreement overall and in the light tail, but
+  the highest in the dark tail.
 - On hold: a "clumping" metric (how ink is distributed within the frame), pending more planning.
 
 ## Working rules
